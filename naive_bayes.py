@@ -4,10 +4,15 @@ import sys
 from functools import reduce
 from collections import defaultdict
 
+from nltk.tokenize import sent_tokenize
+
 class Dataset():
     def __init__(self, path_to_dataset):
         self.path_to_dataset = path_to_dataset
         self.count_of_words = {'pos': defaultdict(int), 'neg': defaultdict(int)}
+
+    def update_dataset(self, new_path):
+        self.path_to_dataset = new_path
 
     def count_words_from_corpus(self):
         # Read in binary and decode in ascii
@@ -26,8 +31,9 @@ class Dataset():
     @staticmethod
     def tokenize(sentence):
         # Remove punctuations
-        punct = ['.', ',', '!', '?']
-        tokens = [token for token in sentence.split(' ') if token not in punct]
+        # punct = ['.', ',', '!', '?']
+        # tokens = [token for token in sentence.split(' ') if token not in punct]
+        tokens = sent_tokenize(sentence)
         return tokens
 
     @staticmethod
@@ -53,7 +59,7 @@ def test_model(model, path_to_dataset):
             # Calculate P(words) = P(words | pos) + P(words | neg)
             # Likelihood
             evidence_pos = [(model.count_of_words['pos'][token]+1)/(model.total_words['pos'] + (model.total_words['pos'] + model.total_words['neg'])) for token in tokens]
-            evidence_neg = [(model.count_of_words['neg'][token]+1)/(model.total_words['neg'] + (model.total_words['pos'] + model.total_words['neg']))for token in tokens]
+            evidence_neg = [(model.count_of_words['neg'][token]+1)/(model.total_words['neg'] + (model.total_words['pos'] + model.total_words['neg'])) for token in tokens]
             evidence = reduce(lambda x, y: x*y, evidence_pos) + reduce(lambda x, y: x*y, evidence_neg)
 
             p_pos = (prior * reduce(lambda x, y: x*y, evidence_pos)) / evidence
@@ -67,17 +73,19 @@ def test_model(model, path_to_dataset):
     return results
 
 def main():
-    base_path = os.path.join('datasets', 'rt-polaritydata')
-    path_to_dataset = {'pos': os.path.join(base_path, 'pos'), 'neg': os.path.join(base_path, 'neg')}
+    base_path = os.path.join('datasets')
+    dataset_path = os.path.join(base_path, 'txt_sentoken')
+
+    path_to_dataset = {'pos': os.path.join(dataset_path, 'pos'), 'neg': os.path.join(dataset_path, 'neg')}
 
     # Train Naive Bayes model
     dataset = Dataset(path_to_dataset)
     dataset.count_words_from_corpus()
 
     # Test the trained model
-    path_to_test_dataset = {'pos': os.path.join(base_path, 'rt-polaritydatatest.pos'), 'neg': os.path.join(base_path, 'rt-polaritydatatest.neg')}
-
+    path_to_test_dataset = {'pos': os.path.join(base_path, 'rt-polaritydata', 'rt-polaritydatatest.pos'), 'neg': os.path.join(base_path, 'rt-polaritydata', 'rt-polaritydatatest.neg')}
     results = test_model(dataset, path_to_test_dataset)
+
     print(results)
     print(results['correct']/(sum(results.values())))
 
